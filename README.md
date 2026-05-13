@@ -142,6 +142,25 @@ Copy-Item .env.example .env.local
 
 ## Docker 部署
 
+已发布 Docker Hub 镜像：
+
+```text
+https://hub.docker.com/repository/docker/tannic666/gemini-image-desk
+```
+
+直接运行镜像：
+
+```bash
+docker pull tannic666/gemini-image-desk:latest
+docker run --rm -p 3000:3000 \
+  -e GEMINI_BASE_URL=https://generativelanguage.googleapis.com \
+  -e GEMINI_DEFAULT_MODEL=gemini-2.5-flash-image \
+  -e PUBLIC_BASE_URL_CONFIG=false \
+  tannic666/gemini-image-desk:latest
+```
+
+也可以从当前仓库本地构建并启动：
+
 ```bash
 docker compose up --build
 ```
@@ -151,6 +170,8 @@ docker compose up --build
 ```text
 http://localhost:3000
 ```
+
+不要把真实 API Key 写进镜像或 compose 配置。当前版本由用户在浏览器里填写 API Key，并默认只保存在浏览器本地。
 
 ## 可用脚本
 

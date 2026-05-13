@@ -47,6 +47,23 @@ http://localhost:3000
 
 ## Docker Image
 
+已发布 Docker Hub 镜像：
+
+```text
+https://hub.docker.com/repository/docker/tannic666/gemini-image-desk
+```
+
+直接运行镜像：
+
+```bash
+docker pull tannic666/gemini-image-desk:latest
+docker run --rm -p 3000:3000 \
+  -e GEMINI_BASE_URL=https://generativelanguage.googleapis.com \
+  -e GEMINI_DEFAULT_MODEL=gemini-2.5-flash-image \
+  -e PUBLIC_BASE_URL_CONFIG=false \
+  tannic666/gemini-image-desk:latest
+```
+
 项目使用 Next.js standalone 输出：
 
 ```bash
