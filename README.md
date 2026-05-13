@@ -148,7 +148,13 @@ Copy-Item .env.example .env.local
 https://hub.docker.com/repository/docker/tannic666/gemini-image-desk
 ```
 
-直接运行镜像：
+一行启动镜像（本地没有镜像时 Docker 会自动拉取）：
+
+```bash
+docker run --rm -p 3000:3000 -e GEMINI_BASE_URL=https://generativelanguage.googleapis.com -e GEMINI_DEFAULT_MODEL=gemini-2.5-flash-image -e PUBLIC_BASE_URL_CONFIG=false tannic666/gemini-image-desk:latest
+```
+
+也可以显式拉取后运行：
 
 ```bash
 docker pull tannic666/gemini-image-desk:latest
@@ -216,4 +222,4 @@ prototype/           早期本地 HTML 原型
 
 ## License
 
-暂未声明。
+本项目基于 [MIT License](LICENSE) 开源。
