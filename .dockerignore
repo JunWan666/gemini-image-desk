@@ -1,0 +1,11 @@
+.next/
+node_modules/
+npm-debug.log*
+*.log
+.visual-check-*.png
+.env
+.env*.local
+.git/
+prototype/
+docs/
+.chrome-prototype-check/

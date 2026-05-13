@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gemini Image Desk Prototype</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg-app: #f6f7f9;
+        --bg-panel: #ffffff;
+        --bg-muted: #eef2f7;
+        --bg-soft: #f9fafb;
+        --border: #d9dee7;
+        --border-strong: #b8c0cc;
+        --text: #14181f;
+        --text-muted: #697386;
+        --text-faint: #9aa4b2;
+        --blue: #2563eb;
+        --blue-soft: #eaf1ff;
+        --green: #16a34a;
+        --green-soft: #eaf8ef;
+        --yellow: #d97706;
+        --yellow-soft: #fff7e6;
+        --red: #dc2626;
+        --red-soft: #feecec;
+        --shadow: 0 18px 50px rgba(20, 24, 31, 0.08);
+        --radius: 8px;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg-app);
+        color: var(--text);
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: 52px 1fr;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background:
+          linear-gradient(135deg, #2563eb 0%, #1a8f5d 55%, #e5b43b 100%);
+        border: 1px solid rgba(20, 24, 31, 0.08);
+      }
+
+      .brand-title {
+        font-size: 16px;
+        line-height: 20px;
+        font-weight: 650;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .status-pill,
+      .chip,
+      .seg-button,
+      .tool-button,
+      .icon-button {
+        min-height: 32px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--bg-panel);
+        color: var(--text-muted);
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 10px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 99px;
+        background: var(--green);
+      }
+
+      .lang-switch {
+        display: inline-grid;
+        grid-template-columns: 1fr 1fr;
+        width: 92px;
+        height: 32px;
+        padding: 3px;
+        gap: 3px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-muted);
+      }
+
+      .lang-option {
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .lang-option.active {
+        background: var(--bg-panel);
+        color: var(--blue);
+        box-shadow: 0 1px 2px rgba(20, 24, 31, 0.08);
+      }
+
+      .workbench {
+        display: grid;
+        grid-template-columns: 280px minmax(620px, 1fr) 320px;
+        gap: 10px;
+        padding: 10px;
+        height: calc(100vh - 52px);
+        min-height: 700px;
+      }
+
+      .panel {
+        min-width: 0;
+        min-height: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .panel-scroll {
+        height: 100%;
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .section {
+        padding: 0 0 14px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 14px;
+      }
+
+      .section:last-child {
+        border-bottom: 0;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0 0 12px;
+        color: var(--text);
+        font-size: 13px;
+        line-height: 18px;
+        font-weight: 650;
+      }
+
+      .field {
+        display: grid;
+        gap: 7px;
+        margin-bottom: 12px;
+      }
+
+      .field label {
+        color: var(--text-muted);
+        font-size: 12px;
+        line-height: 16px;
+      }
+
+      .control,
+      .textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+        color: var(--text);
+        outline: none;
+      }
+
+      .control {
+        height: 38px;
+        padding: 0 11px;
+        font-size: 13px;
+      }
+
+      .control:focus,
+      .textarea:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px var(--blue-soft);
+      }
+
+      .textarea {
+        min-height: clamp(100px, 11vh, 128px);
+        resize: vertical;
+        padding: 12px;
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .hint {
+        color: var(--text-faint);
+        font-size: 12px;
+        line-height: 16px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 36px;
+      }
+
+      .switch {
+        width: 48px;
+        height: 28px;
+        border: 0;
+        border-radius: 99px;
+        background: var(--blue);
+        padding: 3px;
+      }
+
+      .switch::after {
+        content: "";
+        display: block;
+        width: 22px;
+        height: 22px;
+        border-radius: 99px;
+        margin-left: 20px;
+        background: var(--bg-panel);
+        box-shadow: 0 1px 2px rgba(20, 24, 31, 0.2);
+      }
+
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 0 9px;
+        font-size: 12px;
+        background: var(--bg-muted);
+      }
+
+      .chip.active {
+        color: var(--blue);
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .preset-list {
+        display: grid;
+        gap: 7px;
+      }
+
+      .preset-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 10px;
+        border-radius: var(--radius);
+        background: var(--bg-soft);
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+
+      .stage {
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        gap: 10px;
+        height: 100%;
+        min-height: 0;
+        overflow: auto;
+        padding: 12px;
+      }
+
+      .editor-shell,
+      .reference-tray,
+      .result-canvas,
+      .action-bar {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+      }
+
+      .editor-shell {
+        overflow: hidden;
+      }
+
+      .editor-head,
+      .tray-head,
+      .canvas-head,
+      .history-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .editor-head {
+        padding: 10px 10px 0;
+      }
+
+      .mini-tools {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .icon-button {
+        width: 32px;
+        padding: 0;
+        font-size: 13px;
+      }
+
+      .prompt-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 10px 10px;
+      }
+
+      .reference-tray {
+        padding: 10px;
+      }
+
+      .refs {
+        display: grid;
+        grid-template-columns: 120px repeat(3, clamp(72px, 8.8vh, 88px));
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .dropzone,
+      .ref-thumb,
+      .image-tile,
+      .main-preview {
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+
+      .dropzone {
+        display: grid;
+        place-items: center;
+        height: clamp(72px, 8.8vh, 88px);
+        border-style: dashed;
+        border-color: var(--blue);
+        background: var(--blue-soft);
+        color: var(--blue);
+        font-weight: 650;
+        font-size: 13px;
+      }
+
+      .ref-thumb {
+        height: clamp(72px, 8.8vh, 88px);
+        background: var(--bg-muted);
+        position: relative;
+      }
+
+      .ref-thumb::before,
+      .image-mock::before,
+      .main-preview::before {
+        content: "";
+        position: absolute;
+        inset: 14px 18px auto;
+        height: 34%;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid rgba(20, 24, 31, 0.08);
+      }
+
+      .ref-thumb::after,
+      .image-mock::after,
+      .main-preview::after {
+        content: "";
+        position: absolute;
+        left: 26%;
+        right: 26%;
+        bottom: 15%;
+        height: 26%;
+        border-radius: 9px 9px 4px 4px;
+        background: rgba(20, 24, 31, 0.13);
+      }
+
+      .ref-a {
+        background: var(--green-soft);
+      }
+
+      .ref-b {
+        background: var(--yellow-soft);
+      }
+
+      .ref-c {
+        background: var(--red-soft);
+      }
+
+      .result-canvas {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        padding: 10px;
+        background: var(--bg-soft);
+      }
+
+      .canvas-body {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) 148px;
+        gap: 10px;
+        margin-top: 8px;
+      }
+
+      .main-preview {
+        min-height: clamp(240px, 32vh, 360px);
+        background:
+          linear-gradient(180deg, #ffffff 0%, #f1f4f8 100%);
+        position: relative;
+      }
+
+      .main-preview .empty-copy {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: min(320px, 72%);
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .result-side {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+
+      .image-tile {
+        height: clamp(82px, 10vh, 112px);
+        background: var(--bg-panel);
+        position: relative;
+      }
+
+      .image-tile.selected {
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .state-strip {
+        display: grid;
+        gap: 8px;
+      }
+
+      .state-card {
+        min-height: 40px;
+        padding: 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .state-card.running {
+        color: var(--blue);
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .state-card.error {
+        color: var(--red);
+        border-color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 54px;
+        padding: 8px 10px;
+      }
+
+      .actions-left,
+      .actions-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .tool-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        height: 34px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .tool-button.primary {
+        min-width: 132px;
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+        font-weight: 650;
+      }
+
+      .tool-button.danger {
+        border-color: var(--red);
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .params-panel .panel-scroll {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+      }
+
+      .segmented {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-muted);
+      }
+
+      .seg-button {
+        border: 0;
+        background: transparent;
+        font-size: 12px;
+      }
+
+      .seg-button.active {
+        background: var(--bg-panel);
+        color: var(--blue);
+        box-shadow: 0 1px 2px rgba(20, 24, 31, 0.08);
+      }
+
+      .stepper {
+        display: grid;
+        grid-template-columns: 40px 1fr 40px;
+        width: 132px;
+        height: 38px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .stepper button {
+        border: 0;
+        background: var(--bg-panel);
+        color: var(--text-muted);
+      }
+
+      .stepper span {
+        display: grid;
+        place-items: center;
+        border-inline: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 650;
+      }
+
+      .current-image {
+        display: grid;
+        gap: 10px;
+      }
+
+      .current-preview {
+        height: clamp(108px, 13vh, 148px);
+        border-radius: var(--radius);
+        background: var(--bg-muted);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .history {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .history-list {
+        min-height: 0;
+        overflow: auto;
+        display: grid;
+        gap: 7px;
+        align-content: start;
+      }
+
+      .history-row {
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        align-items: center;
+        gap: 10px;
+        min-height: 58px;
+        padding: 7px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-panel);
+      }
+
+      .history-row.active {
+        border-color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .history-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 7px;
+        background: var(--green-soft);
+      }
+
+      .history-meta {
+        min-width: 0;
+      }
+
+      .history-title {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .history-sub {
+        margin: 4px 0 0;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .history-more {
+        color: var(--text-faint);
+        font-size: 18px;
+      }
+
+      .mobile-tabs {
+        display: none;
+      }
+
+      [data-i18n] {
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 1180px) {
+        .workbench {
+          grid-template-columns: 260px minmax(460px, 1fr);
+          grid-template-areas:
+            "left center"
+            "right center";
+          height: auto;
+          min-height: calc(100vh - 56px);
+        }
+
+        .config-panel {
+          grid-area: left;
+          height: 520px;
+        }
+
+        .stage-panel {
+          grid-area: center;
+          min-height: 860px;
+        }
+
+        .params-panel {
+          grid-area: right;
+          height: 560px;
+        }
+      }
+
+      @media (min-width: 1181px) and (max-height: 820px) {
+        .textarea {
+          min-height: 92px;
+        }
+
+        .refs {
+          grid-template-columns: 108px repeat(3, 64px);
+        }
+
+        .dropzone,
+        .ref-thumb {
+          height: 64px;
+        }
+
+        .main-preview {
+          min-height: clamp(210px, 25vh, 240px);
+        }
+
+        .image-tile {
+          height: 72px;
+        }
+
+        .state-strip {
+          display: none;
+        }
+
+        .current-preview {
+          height: 96px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .topbar {
+          padding: 0 10px;
+        }
+
+        .brand-title {
+          font-size: 14px;
+        }
+
+        .status-pill {
+          display: none;
+        }
+
+        .workbench {
+          display: block;
+          height: auto;
+          min-height: 0;
+          padding: 10px;
+        }
+
+        .panel {
+          box-shadow: none;
+        }
+
+        .config-panel,
+        .params-panel {
+          display: none;
+        }
+
+        .stage-panel {
+          min-height: 0;
+        }
+
+        .stage {
+          padding: 12px;
+        }
+
+        .refs {
+          grid-template-columns: 118px repeat(2, 76px);
+          overflow: hidden;
+        }
+
+        .ref-thumb,
+        .dropzone {
+          height: 76px;
+        }
+
+        .canvas-body {
+          grid-template-columns: 1fr;
+        }
+
+        .main-preview {
+          min-height: 232px;
+        }
+
+        .result-side {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .image-tile {
+          height: 92px;
+        }
+
+        .state-strip {
+          display: none;
+        }
+
+        .action-bar {
+          position: sticky;
+          bottom: 0;
+          z-index: 5;
+          flex-direction: column;
+          align-items: stretch;
+          background: var(--bg-panel);
+        }
+
+        .actions-left,
+        .actions-right {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .actions-right .tool-button {
+          flex: 1;
+        }
+
+        .mobile-tabs {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 4px;
+          margin-top: 10px;
+          padding: 4px;
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          background: var(--bg-muted);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div class="brand-title" data-i18n="app.name">Gemini 图像工作台</div>
+        </div>
+        <div class="top-actions">
+          <div class="status-pill">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span data-i18n="status.connected">Gemini 已连接</span>
+          </div>
+          <div class="lang-switch" aria-label="Language">
+            <button class="lang-option active" type="button" data-lang="zh-CN">中</button>
+            <button class="lang-option" type="button" data-lang="en-US">EN</button>
+          </div>
+        </div>
+      </header>
+
+      <main class="workbench">
+        <aside class="panel config-panel">
+          <div class="panel-scroll">
+            <section class="section mode-note">
+              <h2 class="section-title" data-i18n="mode.title">运行模式</h2>
+              <div class="chip-list">
+                <span class="chip active" data-i18n="mode.managed">托管 Base URL</span>
+                <span class="chip" data-i18n="mode.public">公开模式</span>
+              </div>
+              <p class="hint mode-help" data-i18n="mode.help">托管模式下可隐藏 Base URL，只让用户填写 Key。</p>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title" data-i18n="nav.connection">连接</h2>
+              <div class="field">
+                <label for="api-key">API Key</label>
+                <input id="api-key" class="control" value="••••••••••••••••" />
+              </div>
+              <div class="field base-url-field">
+                <label for="base-url">Base URL</label>
+                <input id="base-url" class="control" value="https://generativelanguage.googleapis.com" />
+              </div>
+              <div class="toggle-row">
+                <span class="hint" data-i18n="settings.saveKey">本地保存 Key</span>
+                <button class="switch" type="button" aria-label="Save key"></button>
+              </div>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title" data-i18n="nav.model">模型</h2>
+              <div class="field">
+                <label for="model-select">Model</label>
+                <select id="model-select" class="control">
+                  <option>gemini-2.5-flash-image</option>
+                  <option>gemini-3-pro-image-preview</option>
+                </select>
+              </div>
+              <div class="chip-list">
+                <span class="chip active" data-i18n="cap.textToImage">文生图</span>
+                <span class="chip" data-i18n="cap.references">参考图</span>
+                <span class="chip" data-i18n="cap.multiImage">多图</span>
+              </div>
+            </section>
+
+            <section class="section">
+              <h2 class="section-title" data-i18n="nav.presets">预设</h2>
+              <div class="preset-list">
+                <div class="preset-item"><span data-i18n="preset.product">产品图</span><span>01</span></div>
+                <div class="preset-item"><span data-i18n="preset.portrait">人像</span><span>02</span></div>
+                <div class="preset-item"><span data-i18n="preset.poster">海报</span><span>03</span></div>
+              </div>
+            </section>
+          </div>
+        </aside>
+
+        <section class="panel stage-panel">
+          <div class="stage">
+            <div class="editor-shell">
+              <div class="editor-head">
+                <h2 class="section-title" data-i18n="prompt.label">提示词</h2>
+                <div class="mini-tools">
+                  <button class="icon-button" type="button" aria-label="Template">T</button>
+                  <button class="icon-button" type="button" aria-label="Clear">C</button>
+                  <button class="icon-button" type="button" aria-label="Paste">P</button>
+                </div>
+              </div>
+              <textarea class="textarea" data-i18n-placeholder="prompt.placeholder">把这张产品图放在干净白底上，保留真实阴影，生成电商主图风格。</textarea>
+              <div class="prompt-footer">
+                <span class="hint" data-i18n="prompt.count">68 字</span>
+                <span class="hint">gemini-2.5-flash-image</span>
+              </div>
+            </div>
+
+            <div class="reference-tray">
+              <div class="tray-head">
+                <h2 class="section-title" data-i18n="references.label">参考图</h2>
+                <span class="hint">PNG/JPG/WebP · 10MB</span>
+              </div>
+              <div class="refs">
+                <button class="dropzone" type="button" data-i18n="references.upload">上传参考图</button>
+                <div class="ref-thumb ref-a image-mock" aria-label="Reference 1"></div>
+                <div class="ref-thumb ref-b image-mock" aria-label="Reference 2"></div>
+                <div class="ref-thumb ref-c image-mock" aria-label="Reference 3"></div>
+              </div>
+            </div>
+
+            <div class="result-canvas">
+              <div class="canvas-head">
+                <h2 class="section-title" data-i18n="result.title">生成结果</h2>
+                <span class="hint" data-i18n="state.running">正在生成 · 预计 12 秒</span>
+              </div>
+              <div class="canvas-body">
+                <div class="main-preview image-mock">
+                  <div class="empty-copy" data-i18n="state.emptyResult">生成结果会显示在这里</div>
+                </div>
+                <div class="result-side">
+                  <div class="image-tile selected image-mock"></div>
+                  <div class="image-tile image-mock"></div>
+                  <div class="state-strip">
+                    <div class="state-card running" data-i18n="state.running">正在生成 · 预计 12 秒</div>
+                    <div class="state-card error" data-i18n="error.model">模型暂时不可用，请更换模型</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-bar">
+              <div class="actions-left">
+                <button class="tool-button" type="button" data-i18n="action.retry">重试</button>
+                <button class="tool-button danger" type="button" data-i18n="action.stop">停止</button>
+              </div>
+              <div class="actions-right">
+                <button class="tool-button" type="button" data-i18n="action.download">下载</button>
+                <button class="tool-button primary" type="button" data-i18n="action.generate">生成图片</button>
+              </div>
+              <div class="mobile-tabs">
+                <button class="seg-button active" type="button" data-i18n="prompt.label">提示词</button>
+                <button class="seg-button" type="button" data-i18n="history.title">历史记录</button>
+                <button class="seg-button" type="button" data-i18n="settings.output">输出设置</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel params-panel">
+          <div class="panel-scroll">
+            <section class="section">
+              <h2 class="section-title" data-i18n="settings.output">输出设置</h2>
+              <div class="field">
+                <label data-i18n="settings.aspectRatio">图片比例</label>
+                <div class="segmented">
+                  <button class="seg-button active" type="button">1:1</button>
+                  <button class="seg-button" type="button">4:3</button>
+                  <button class="seg-button" type="button">16:9</button>
+                  <button class="seg-button" type="button">9:16</button>
+                </div>
+              </div>
+              <div class="field">
+                <label data-i18n="settings.count">生成数量</label>
+                <div class="stepper">
+                  <button type="button">-</button>
+                  <span>2</span>
+                  <button type="button">+</button>
+                </div>
+              </div>
+            </section>
+
+            <section class="section current-image">
+              <h2 class="section-title" data-i18n="current.title">当前图片</h2>
+              <div class="current-preview image-mock"></div>
+              <div class="chip-list">
+                <button class="tool-button" type="button" data-i18n="action.download">下载</button>
+                <button class="tool-button primary" type="button" data-i18n="action.sendToEdit">继续编辑</button>
+              </div>
+            </section>
+
+            <section class="history">
+              <div class="history-head">
+                <h2 class="section-title" data-i18n="history.title">历史记录</h2>
+                <button class="icon-button" type="button" aria-label="Search">S</button>
+              </div>
+              <div class="history-list">
+                <article class="history-row active">
+                  <div class="history-thumb"></div>
+                  <div class="history-meta">
+                    <p class="history-title" data-i18n="history.product">产品白底图</p>
+                    <p class="history-sub">刚刚 · 2</p>
+                  </div>
+                  <div class="history-more">...</div>
+                </article>
+                <article class="history-row">
+                  <div class="history-thumb" style="background: var(--yellow-soft)"></div>
+                  <div class="history-meta">
+                    <p class="history-title" data-i18n="history.portrait">人像风格化</p>
+                    <p class="history-sub">12:08 · 1</p>
+                  </div>
+                  <div class="history-more">...</div>
+                </article>
+                <article class="history-row">
+                  <div class="history-thumb" style="background: var(--red-soft)"></div>
+                  <div class="history-meta">
+                    <p class="history-title" data-i18n="history.poster">海报构图</p>
+                    <p class="history-sub">昨天 · 4</p>
+                  </div>
+                  <div class="history-more">...</div>
+                </article>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script>
+      const dictionaries = {
+        "zh-CN": {
+          "app.name": "Gemini 图像工作台",
+          "status.connected": "Gemini 已连接",
+          "mode.title": "运行模式",
+          "mode.managed": "托管 Base URL",
+          "mode.public": "公开模式",
+          "mode.help": "托管模式下可隐藏 Base URL，只让用户填写 Key。",
+          "nav.connection": "连接",
+          "nav.model": "模型",
+          "nav.presets": "预设",
+          "settings.saveKey": "本地保存 Key",
+          "settings.output": "输出设置",
+          "settings.aspectRatio": "图片比例",
+          "settings.count": "生成数量",
+          "current.title": "当前图片",
+          "cap.textToImage": "文生图",
+          "cap.references": "参考图",
+          "cap.multiImage": "多图",
+          "preset.product": "产品图",
+          "preset.portrait": "人像",
+          "preset.poster": "海报",
+          "prompt.label": "提示词",
+          "prompt.placeholder": "描述你想生成或修改的图片",
+          "prompt.count": "68 字",
+          "references.label": "参考图",
+          "references.upload": "上传参考图",
+          "result.title": "生成结果",
+          "state.emptyResult": "生成结果会显示在这里",
+          "state.running": "正在生成 · 预计 12 秒",
+          "error.model": "模型暂时不可用，请更换模型",
+          "action.generate": "生成图片",
+          "action.stop": "停止",
+          "action.retry": "重试",
+          "action.download": "下载",
+          "action.sendToEdit": "继续编辑",
+          "history.title": "历史记录",
+          "history.product": "产品白底图",
+          "history.portrait": "人像风格化",
+          "history.poster": "海报构图"
+        },
+        "en-US": {
+          "app.name": "Gemini Image Desk",
+          "status.connected": "Gemini connected",
+          "mode.title": "Runtime Mode",
+          "mode.managed": "Managed Base URL",
+          "mode.public": "Public Mode",
+          "mode.help": "Managed mode can hide Base URL and only ask users for a key.",
+          "nav.connection": "Connection",
+          "nav.model": "Model",
+          "nav.presets": "Presets",
+          "settings.saveKey": "Save key locally",
+          "settings.output": "Output Settings",
+          "settings.aspectRatio": "Aspect Ratio",
+          "settings.count": "Output Count",
+          "current.title": "Current Image",
+          "cap.textToImage": "Text to Image",
+          "cap.references": "References",
+          "cap.multiImage": "Multi Image",
+          "preset.product": "Product",
+          "preset.portrait": "Portrait",
+          "preset.poster": "Poster",
+          "prompt.label": "Prompt",
+          "prompt.placeholder": "Describe the image to create or edit",
+          "prompt.count": "68 chars",
+          "references.label": "Reference Images",
+          "references.upload": "Upload reference",
+          "result.title": "Results",
+          "state.emptyResult": "Generated images appear here",
+          "state.running": "Generating · about 12 seconds",
+          "error.model": "Model is unavailable. Choose another model.",
+          "action.generate": "Generate",
+          "action.stop": "Stop",
+          "action.retry": "Retry",
+          "action.download": "Download",
+          "action.sendToEdit": "Send to Edit",
+          "history.title": "History",
+          "history.product": "Product on White",
+          "history.portrait": "Portrait Styling",
+          "history.poster": "Poster Layout"
+        }
+      };
+
+      function applyLocale(locale) {
+        const dict = dictionaries[locale];
+        document.documentElement.lang = locale;
+        document.querySelectorAll("[data-i18n]").forEach((node) => {
+          const key = node.dataset.i18n;
+          if (dict[key]) node.textContent = dict[key];
+        });
+        document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+          const key = node.dataset.i18nPlaceholder;
+          if (dict[key]) node.placeholder = dict[key];
+        });
+        document.querySelectorAll(".lang-option").forEach((button) => {
+          button.classList.toggle("active", button.dataset.lang === locale);
+        });
+      }
+
+      document.querySelectorAll(".lang-option").forEach((button) => {
+        button.addEventListener("click", () => applyLocale(button.dataset.lang));
+      });
+
+      applyLocale("zh-CN");
+    </script>
+  </body>
+</html>

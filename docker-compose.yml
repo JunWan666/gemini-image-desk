@@ -1,0 +1,13 @@
+services:
+  gemini-image-desk:
+    build:
+      context: .
+    image: gemini-image-desk:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      GEMINI_BASE_URL: "${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com}"
+      GEMINI_DEFAULT_MODEL: "${GEMINI_DEFAULT_MODEL:-gemini-2.5-flash-image}"
+      PUBLIC_BASE_URL_CONFIG: "${PUBLIC_BASE_URL_CONFIG:-false}"
+    restart: unless-stopped
