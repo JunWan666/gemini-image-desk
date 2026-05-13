@@ -189,10 +189,11 @@ function buildRequestBody(input: GenerateImageInput) {
       },
     ],
     generationConfig: {
-      responseModalities: ["IMAGE"],
+      responseModalities: ["TEXT", "IMAGE"],
       responseFormat: {
         image: imageConfig,
       },
+      imageConfig,
     },
   };
 }
@@ -309,6 +310,43 @@ function getInlineData(part: GeminiPart) {
   return part.inlineData ?? part.inline_data;
 }
 
+function extractDataUrlImages(text?: string): GeminiInlineData[] {
+  if (!text) return [];
+
+  const images: GeminiInlineData[] = [];
+  const dataUrlPattern =
+    /data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=\r\n]+)/g;
+
+  for (const match of text.matchAll(dataUrlPattern)) {
+    const mimeType = match[1].replace("image/jpg", "image/jpeg");
+    const data = match[2].replace(/\s/g, "");
+
+    if (data) {
+      images.push({ mimeType, data });
+    }
+  }
+
+  return images;
+}
+
+function pushGeneratedImage(
+  images: ProviderGeneratedImage[],
+  inlineData: GeminiInlineData,
+  input: GenerateImageInput,
+) {
+  if (!inlineData.data) return;
+
+  const mimeType = inlineData.mimeType ?? inlineData.mime_type ?? "image/png";
+  images.push({
+    id: makeId("image"),
+    imageUrl: `data:${mimeType};base64,${inlineData.data}`,
+    mimeType,
+    prompt: input.prompt,
+    model: input.model,
+    createdAt: new Date().toISOString(),
+  });
+}
+
 function extractImages(
   response: GeminiResponse,
   input: GenerateImageInput,
@@ -318,17 +356,14 @@ function extractImages(
   for (const candidate of response.candidates ?? []) {
     for (const part of candidate.content?.parts ?? []) {
       const inlineData = getInlineData(part);
-      if (!inlineData?.data) continue;
+      if (inlineData?.data) {
+        pushGeneratedImage(images, inlineData, input);
+        continue;
+      }
 
-      const mimeType = inlineData.mimeType ?? inlineData.mime_type ?? "image/png";
-      images.push({
-        id: makeId("image"),
-        imageUrl: `data:${mimeType};base64,${inlineData.data}`,
-        mimeType,
-        prompt: input.prompt,
-        model: input.model,
-        createdAt: new Date().toISOString(),
-      });
+      for (const textImage of extractDataUrlImages(part.text)) {
+        pushGeneratedImage(images, textImage, input);
+      }
     }
   }
 

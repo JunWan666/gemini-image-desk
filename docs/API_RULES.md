@@ -123,3 +123,29 @@ type ApiErrorResponse = {
 ## Compatibility Notes
 
 Gemini 图像 API 能力会变化。模型 id、默认模型、Base URL 和 provider 参数要集中放在配置或 adapter 中，不能散落在 UI 组件里。
+
+### Gemini 图片响应兼容
+
+provider 必须优先兼容官方 Gemini 原生响应：
+
+```text
+candidates[].content.parts[].inlineData
+candidates[].content.parts[].inline_data
+```
+
+部分 Gemini 兼容网关可能会把图片作为 Markdown/data URL 放在文本 part 中，例如：
+
+```text
+![image](data:image/png;base64,...)
+data:image/png;base64,...
+```
+
+这种格式也应在 provider adapter 内解析为统一的 `ProviderGeneratedImage`，不要让页面组件感知不同网关的响应差异。
+
+生成请求应同时保留官方 Gemini 所需字段，并兼容常见代理参数：
+
+```text
+generationConfig.responseModalities
+generationConfig.responseFormat.image
+generationConfig.imageConfig
+```
