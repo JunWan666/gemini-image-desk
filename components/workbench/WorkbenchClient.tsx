@@ -6,10 +6,12 @@ import {
   Clipboard,
   Download,
   ExternalLink,
+  Check,
   ImagePlus,
   Maximize2,
   Moon,
   RotateCcw,
+  Save,
   Search,
   Send,
   Square,
@@ -63,6 +65,7 @@ type ModelsResponse =
 
 type ModelFetchStatus = "idle" | "loading" | "success" | "empty" | "error";
 type ThemeMode = "light" | "dark";
+type MobileView = "compose" | "setup" | "output" | "history";
 
 type ModelOption = {
   id: string;
@@ -425,6 +428,8 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
   const [historySearchOpen, setHistorySearchOpen] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<PresetId | null>(null);
   const [status, setStatus] = useState<GenerationStatus>("idle");
+  const [mobileView, setMobileView] = useState<MobileView>("compose");
+  const [connectionSaved, setConnectionSaved] = useState(false);
   const [activeOperation, setActiveOperation] = useState<ImageKind>("generate");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [previewImage, setPreviewImage] = useState<PreviewImage | null>(null);
@@ -434,12 +439,38 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const generationStartedAtRef = useRef<number | null>(null);
+  const connectionSavedTimerRef = useRef<number | null>(null);
 
   const dictionary = dictionaries[locale];
   const t = (key: I18nKey) => dictionary[key];
   const isPublicMode = config.baseUrlMode === "public";
   const getImageKindLabel = (kind?: ImageKind) =>
     t(normalizeImageKind(kind) === "edit" ? "badge.edit" : "badge.generate");
+
+  const saveSettingsSnapshot = () => {
+    const snapshot: SettingsSnapshot = {
+      locale,
+      baseUrl: isPublicMode ? baseUrl : undefined,
+      model,
+      imageSize,
+      apiKey,
+      theme,
+      themePreferenceSet,
+    };
+    localStorage.setItem(settingsKey, JSON.stringify(snapshot));
+  };
+
+  const handleSaveConnection = () => {
+    saveSettingsSnapshot();
+    setConnectionSaved(true);
+    if (connectionSavedTimerRef.current) {
+      window.clearTimeout(connectionSavedTimerRef.current);
+    }
+    connectionSavedTimerRef.current = window.setTimeout(() => {
+      setConnectionSaved(false);
+      connectionSavedTimerRef.current = null;
+    }, 4200);
+  };
 
   const selectedResult = useMemo(
     () => results.find((result) => result.id === selectedResultId) ?? results[0],
@@ -558,17 +589,7 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
 
   useEffect(() => {
     if (!hydrated) return;
-
-    const snapshot: SettingsSnapshot = {
-      locale,
-      baseUrl: isPublicMode ? baseUrl : undefined,
-      model,
-      imageSize,
-      apiKey,
-      theme,
-      themePreferenceSet,
-    };
-    localStorage.setItem(settingsKey, JSON.stringify(snapshot));
+    saveSettingsSnapshot();
   }, [
     apiKey,
     baseUrl,
@@ -580,6 +601,14 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
     theme,
     themePreferenceSet,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (connectionSavedTimerRef.current) {
+        window.clearTimeout(connectionSavedTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -1192,7 +1221,27 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
         </div>
       </header>
 
-      <main className="workbench">
+      <main className={`workbench mobile-${mobileView}`}>
+        <div className="mobile-tabs" aria-label={t("nav.mobile")}>
+          {(
+            [
+              ["compose", "prompt.label"],
+              ["setup", "nav.connection"],
+              ["output", "settings.output"],
+              ["history", "history.title"],
+            ] as const
+          ).map(([view, labelKey]) => (
+            <button
+              className={`seg-button ${mobileView === view ? "active" : ""}`}
+              key={view}
+              type="button"
+              aria-pressed={mobileView === view}
+              onClick={() => setMobileView(view)}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
         <aside className="panel config-panel">
           <div className="panel-scroll">
             <section className="section mode-note">
@@ -1206,7 +1255,7 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
               </p>
             </section>
 
-            <section className="section">
+            <section className="section connection-section">
               <h2 className="section-title">{t("nav.connection")}</h2>
               <div className="field">
                 <label htmlFor="api-key">{t("field.apiKey")}</label>
@@ -1230,19 +1279,43 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
                   />
                 </div>
               ) : null}
-              <button
-                className="tool-button subtle full-width"
-                type="button"
-                onClick={() => {
-                  setApiKey("");
-                }}
+              <div className="connection-actions">
+                <button
+                  className="tool-button primary"
+                  type="button"
+                  onClick={handleSaveConnection}
+                >
+                  <Save size={15} />
+                  {t("action.save")}
+                </button>
+                <button
+                  className="tool-button subtle"
+                  type="button"
+                  onClick={() => {
+                    setApiKey("");
+                    setConnectionSaved(false);
+                  }}
+                >
+                  <Trash2 size={15} />
+                  {t("action.clear")}
+                </button>
+              </div>
+              <div
+                className={`connection-save-status ${
+                  connectionSaved ? "visible" : ""
+                }`}
+                aria-live="polite"
               >
-                <Trash2 size={15} />
-                {t("action.clear")}
-              </button>
+                {connectionSaved ? (
+                  <>
+                    <Check size={13} />
+                    <span>{t("settings.saved")}</span>
+                  </>
+                ) : null}
+              </div>
             </section>
 
-            <section className="section">
+            <section className="section model-section">
               <h2 className="section-title">{t("nav.model")}</h2>
               <div className="field">
                 <label htmlFor="model-select">{t("field.model")}</label>
@@ -1274,7 +1347,7 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
               </div>
             </section>
 
-            <section className="section">
+            <section className="section preset-section">
               <div className="preset-head">
                 <h2 className="section-title">{t("nav.presets")}</h2>
                 <a
@@ -1371,6 +1444,46 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
                   >
                     <Upload size={15} />
                   </button>
+                </div>
+              </div>
+              <div className="mobile-prompt-tools">
+                <div className="mobile-model-row">
+                  <label>{t("field.model")}</label>
+                  <select
+                    className="control"
+                    value={model}
+                    onChange={(event) => setModel(event.target.value)}
+                    aria-label={t("field.model")}
+                  >
+                    {modelSelectOptions.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.displayName
+                          ? `${item.displayName} (${item.id})`
+                          : item.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mobile-model-row">
+                  <label>{t("nav.presets")}</label>
+                  <select
+                    className="control"
+                    value={selectedPreset ?? ""}
+                    onChange={(event) => {
+                      const preset = presetOptions.find(
+                        (item) => item.id === event.target.value,
+                      );
+                      if (preset) applyPreset(preset);
+                    }}
+                    aria-label={t("nav.presets")}
+                  >
+                    <option value="">{t("nav.presets")}</option>
+                    {presetOptions.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {t(preset.labelKey)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <textarea
@@ -1624,17 +1737,6 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
                 >
                   <ImagePlus size={16} />
                   {references.length ? t("action.editImage") : t("action.generate")}
-                </button>
-              </div>
-              <div className="mobile-tabs">
-                <button className="seg-button active" type="button">
-                  {t("prompt.label")}
-                </button>
-                <button className="seg-button" type="button">
-                  {t("history.title")}
-                </button>
-                <button className="seg-button" type="button">
-                  {t("settings.output")}
                 </button>
               </div>
             </div>
