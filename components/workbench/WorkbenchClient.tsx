@@ -96,6 +96,16 @@ type PreviewImage = {
   mimeType?: string;
 };
 
+type ImportedConnection = {
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  prompt?: string;
+  imageSize?: string;
+  locale?: Locale;
+  hasSensitiveInput: boolean;
+};
+
 const settingsKey = "gemini-image-desk.settings.v1";
 const historyKey = "gemini-image-desk.history.v1";
 const historyDbName = "gemini-image-desk";
@@ -200,6 +210,198 @@ function isThemeMode(value: unknown): value is ThemeMode {
 
 function isI18nKey(key: string): key is I18nKey {
   return key in dictionaries[defaultLocale];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readString(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function readRecordString(
+  record: Record<string, unknown>,
+  names: string[],
+) {
+  const exactName = names.find((name) => readString(record[name]));
+  if (exactName) return readString(record[exactName]);
+
+  const lowerNames = new Set(names.map((name) => name.toLowerCase()));
+  for (const [key, value] of Object.entries(record)) {
+    if (lowerNames.has(key.toLowerCase())) {
+      const text = readString(value);
+      if (text) return text;
+    }
+  }
+
+  return undefined;
+}
+
+function getSearchParamsFromHash(hash: string) {
+  const source = hash.replace(/^#/, "");
+  const query = source.includes("?")
+    ? source.slice(source.indexOf("?") + 1)
+    : source;
+
+  return new URLSearchParams(query);
+}
+
+function readSearchParam(paramsList: URLSearchParams[], names: string[]) {
+  const lowerNames = new Set(names.map((name) => name.toLowerCase()));
+
+  for (const params of paramsList) {
+    for (const [key, value] of params.entries()) {
+      if (lowerNames.has(key.toLowerCase())) {
+        const text = readString(value);
+        if (text) return text;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function parseJsonObject(value: string) {
+  const attempts = [value];
+
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded !== value) attempts.push(decoded);
+  } catch {
+    // Keep the original value when it is not URI-encoded JSON.
+  }
+
+  for (const attempt of attempts) {
+    try {
+      const parsed = JSON.parse(attempt) as unknown;
+      if (isRecord(parsed)) return parsed;
+    } catch {
+      // Try the next representation.
+    }
+  }
+
+  return undefined;
+}
+
+function parseBase64JsonObject(value: string) {
+  const compact = value.trim().replace(/-/g, "+").replace(/_/g, "/");
+  const padded = compact.padEnd(Math.ceil(compact.length / 4) * 4, "=");
+
+  try {
+    return parseJsonObject(atob(padded));
+  } catch {
+    return undefined;
+  }
+}
+
+function mergeImportedConnection(
+  target: ImportedConnection,
+  source: Record<string, unknown>,
+) {
+  target.apiKey ??= readRecordString(source, [
+    "apiKey",
+    "api_key",
+    "key",
+    "token",
+  ]);
+  target.baseUrl ??= readRecordString(source, [
+    "baseUrl",
+    "baseURL",
+    "base_url",
+    "url",
+    "address",
+    "server",
+    "domain",
+  ]);
+  target.model ??= readRecordString(source, ["model", "modelId", "model_id"]);
+  target.prompt ??= readRecordString(source, ["prompt"]);
+
+  const settings = source.settings;
+  if (isRecord(settings)) {
+    mergeImportedConnection(target, settings);
+  }
+
+  const keyVaults = source.keyVaults;
+  if (isRecord(keyVaults)) {
+    const openai = keyVaults.openai;
+    if (isRecord(openai)) {
+      mergeImportedConnection(target, openai);
+    }
+  }
+}
+
+function parseImportedConnectionFromUrl(): ImportedConnection | null {
+  if (typeof window === "undefined") return null;
+
+  const paramsList = [
+    new URLSearchParams(window.location.search),
+    getSearchParamsFromHash(window.location.hash),
+  ];
+  const imported: ImportedConnection = { hasSensitiveInput: false };
+
+  imported.apiKey = readSearchParam(paramsList, [
+    "apiKey",
+    "api_key",
+    "key",
+    "token",
+  ]);
+  imported.baseUrl = readSearchParam(paramsList, [
+    "baseUrl",
+    "baseURL",
+    "base_url",
+    "url",
+    "address",
+    "server",
+  ]);
+  imported.model = readSearchParam(paramsList, ["model", "modelId", "model_id"]);
+  imported.prompt = readSearchParam(paramsList, ["prompt"]);
+
+  const importedImageSize = readSearchParam(paramsList, ["imageSize", "image_size"]);
+  if (["1K", "2K", "4K"].includes(importedImageSize ?? "")) {
+    imported.imageSize = importedImageSize;
+  }
+
+  const importedLocale = readSearchParam(paramsList, ["locale", "lang"]);
+  if (isLocale(importedLocale)) {
+    imported.locale = importedLocale;
+  }
+
+  for (const name of ["settings", "provider"]) {
+    const value = readSearchParam(paramsList, [name]);
+    const parsed = value ? parseJsonObject(value) : undefined;
+    if (parsed) {
+      imported.hasSensitiveInput = true;
+      mergeImportedConnection(imported, parsed);
+    }
+  }
+
+  const encodedData = readSearchParam(paramsList, ["data"]);
+  const decodedData = encodedData ? parseBase64JsonObject(encodedData) : undefined;
+  if (decodedData) {
+    imported.hasSensitiveInput = true;
+    mergeImportedConnection(imported, decodedData);
+  }
+
+  if (imported.apiKey) {
+    imported.hasSensitiveInput = true;
+  }
+
+  return imported.apiKey ||
+    imported.baseUrl ||
+    imported.model ||
+    imported.prompt ||
+    imported.imageSize ||
+    imported.locale
+    ? imported
+    : null;
+}
+
+function clearImportedConnectionUrl() {
+  if (typeof window === "undefined" || !window.history.replaceState) return;
+  window.history.replaceState(null, document.title, window.location.pathname);
 }
 
 function normalizeImageKind(value: unknown): ImageKind {
@@ -555,6 +757,33 @@ export function WorkbenchClient({ config }: { config: WorkbenchConfig }) {
           setTheme(settings.theme);
           setThemePreferenceSet(true);
           document.documentElement.dataset.theme = settings.theme;
+        }
+      }
+
+      const importedConnection = parseImportedConnectionFromUrl();
+      if (importedConnection) {
+        if (importedConnection.locale) {
+          setLocale(importedConnection.locale);
+          document.documentElement.lang = importedConnection.locale;
+        }
+        if (importedConnection.apiKey) {
+          setApiKey(importedConnection.apiKey);
+        }
+        if (isPublicMode && importedConnection.baseUrl) {
+          setBaseUrl(importedConnection.baseUrl);
+        }
+        if (importedConnection.model) {
+          setModel(importedConnection.model);
+        }
+        if (importedConnection.imageSize) {
+          setImageSize(importedConnection.imageSize);
+        }
+        if (importedConnection.prompt) {
+          setSelectedPreset(null);
+          setPrompt(importedConnection.prompt);
+        }
+        if (importedConnection.hasSensitiveInput) {
+          clearImportedConnectionUrl();
         }
       }
 
